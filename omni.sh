@@ -3,7 +3,7 @@
 #set -ex
 set -e
 
-VERSION=0.1
+VERSION=0.2
 TEMPDIR=$(mktemp -d -t omni.XXXXXX)
 url=https://localhost:9502
 
@@ -15,7 +15,7 @@ trap cleanup EXIT
 
 display_help() {
 cat <<EOF
-USAGE: ${0##*\/} -P <ProjectID> -B <DQBranch> -U <URL> -G <Git_Remote>
+USAGE: ${0##*\/} -P <ProjectID> -B <DQBranch> -U <URL> -G <Git_Remote> -D <DQProject>
 
     Download the deployment bundle for Omni
 		<ProjectID> and update with the dq components
@@ -23,6 +23,9 @@ USAGE: ${0##*\/} -P <ProjectID> -B <DQBranch> -U <URL> -G <Git_Remote>
 
 		Uses <Git_Remote> for accessing the DQ remote.
 		Uses <URL> for downloading (default: https://localhost:9502 if not given).
+		Uses <DQProject> for the DQ Project (usually shouldn't change).
+
+Version: $VERSION
 EOF
 }
 
@@ -71,13 +74,14 @@ download_and_process() {
 }
 
 # Process commandline parameters
-while getopts "U:P:B:G:" ARGS
+while getopts "U:P:B:G:D:" ARGS
     do
         case ${ARGS} in
         U) url=${OPTARG} ;;
         P) ProjectID=${OPTARG} ;;
         B) DQBranch=${OPTARG} ;;
 				G) GITRemote=${OPTARG} ;;
+				D) GITProject=${OPTARG} ;;
         v) getVersion; exit 0 ;;
         h) display_help; exit 0 ;;
         *) display_help; exit 1 ;;
@@ -86,7 +90,7 @@ done
 
 shift `expr ${OPTIND} - 1`
 
-if [ -z "$ProjectID" -o  -z "$DQBranch" -o -z "$GITRemote" ]; then
+if [ -z "$ProjectID" -o  -z "$DQBranch" -o -z "$GITRemote" -o -z "$GITProject" ]; then
     display_help;
     exit 1;
 fi
