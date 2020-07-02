@@ -107,10 +107,16 @@ download_and_process() { #{{{2
 
   update_manifest
 
-  echo_output "Cloning DQS Repository $GITRemote"
-  git clone --quiet --bare "${GITRemote}"  dqs
-  # DQProject=$(git --git-dir=dqs ls-tree  -r dev:Plans/ -d  --name-only  |head -1)
-  git --git-dir=dqs archive --format=zip -o dq_archive.zip "${DQBranch}^{tree}" "Plans/${GITProject}"
+  if [ "$GITRemote"  == "${GITOrigin:-X}" -a "X" != "${GITDIR:-X}" ]; then
+    echo_output "Creating DQS Archive from $GITRemote and $DQBranch"
+    git --git-dir="$GITDIR" archive --format=zip -o dq_archive.zip "${DQBranch}^{tree}" "Plans/${GITProject}"
+  else
+    echo_output "Cloning DQS Repository $GITRemote"
+    git clone --quiet --bare "${GITRemote}"  dqs
+    # DQProject=$(git --git-dir=dqs ls-tree  -r dev:Plans/ -d  --name-only  |head -1)
+    echo_output "Creating DQS Archive from $GITRemote and $DQBranch"
+    git --git-dir=dqs archive --format=zip -o dq_archive.zip "${DQBranch}^{tree}" "Plans/${GITProject}"
+  fi
 
   echo_output "Updating Deployment Zipfile"
   unzip -q dq_archive.zip
@@ -137,15 +143,19 @@ zip_contents() { #{{{2
 }
 is_git_dir() { #{{{2
   # is current directory a git working tree?
-  git rev-parse --git-dir >/dev/null 2>&1
-  return $?
+  GITDIR=$(git rev-parse --git-dir 2>&1) &&
+  GITOrigin=$(git config remote.origin.url)
+
+  if [ "$GITDIR" == '.git' ]; then
+    GITDIR="${PWD}/${GITDIR}"
+  fi
 }
 determine_current_git_branch() {  #{{{2
   # try to determine the current git branch
   # if it is not yet known
-  if [[ "X" == "${DQBranch:-X}" && is_git_dir ]]; then
+  if [[ "X" == "${DQBranch:-X}" && "X" != "${GITDIR:-X}" ]]; then
     echo_output "Determining git branch from current working directory $PWD"
-    DQBranch=$(git symbolic-ref --short HEAD)
+    DQBranch=$(git symbolic-ref --short HEAD 2>/dev/null) || true
   fi
 }
 source_ini_file() { #{{{2
@@ -201,6 +211,7 @@ shift `expr ${OPTIND} - 1`
 
 check_requirements
 source_ini_file
+is_git_dir
 determine_current_git_branch
 debug_output
 
@@ -213,12 +224,12 @@ if [ "X" == "${ProjectID:-X}" -o \
   exit 1;
 fi
 
+test_dq_branch
 if [ "$DQBranch" = "master" ]; then
   echo "DQ Branch is master, nothing to do."
   exit 0;
 fi
 
-test_dq_branch
 download_and_process
 
 # vim: set et tw=80 sw=0 sts=-1 ts=2 fo+=r :
