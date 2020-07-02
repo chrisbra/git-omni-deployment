@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -eu
-trap cleanup EXIT
+trap cleanup EXIT ERR
 init_variables() { #{{{2
 VERSION=0.4
 url=https://localhost:9502
