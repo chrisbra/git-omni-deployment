@@ -74,10 +74,11 @@ update_manifest() { #{{{2
   echo_output "Updating Manifest"
   sed -i \
     -e 's/^Created-By:.*/& - Omni Deployment Script/' \
-    -e "s/^omnigen-release-number:.*/&.dqbranch-${DQBranch}/" \
+    -e "s/^omnigen-release-number:.*/&.dqbranch-${DQBranch##*/}/" \
   META-INF/Manifest.mf
 }
 test_dq_branch() { #{{{2
+  echo_output "Checking remote branch $DQBranch for $GITRemote"
   git ls-remote -q --exit-code --heads "$GITRemote" "$DQBranch" >/dev/null || \
   (
     errorExit "DQ Branch \"$DQBranch\" does not exist!"
