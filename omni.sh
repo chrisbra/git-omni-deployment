@@ -202,8 +202,9 @@ determine_current_git_branch
 debug_output
 
 if [ -z "$ProjectID" -o  -z "$DQBranch" -o -z "$GITRemote" -o -z "$GITProject" ]; then
-    display_help;
-    exit 1;
+  echo "Missing Parameters!"
+  display_help;
+  exit 1;
 fi
 
 if [ "$DQBranch" = "master" ]; then
