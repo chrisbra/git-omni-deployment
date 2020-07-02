@@ -2,23 +2,20 @@
 
 #set -ex
 set -e
-
-init_variables() {
+trap cleanup EXIT
+init_variables() { #{{{2
 VERSION=0.3
 TEMPDIR=$(mktemp -d -t omni.XXXXXX)
 url=https://localhost:9502
 VERBOSE=0
 SCRIPT=${0##*\/}
 RCFILE=omni_deployment.ini
+ZIP=7z
 }
-
-cleanup() {
+cleanup() { #{{{2
   test -n "$TEMPDIR" && rm -rf "$TEMPDIR"
 }
-
-trap cleanup EXIT
-
-display_help() {
+display_help() { #{{{2
 cat <<EOF
 USAGE: $SCRIPT -P <ProjectID> -B <DQBranch> -U <URL> -G <Git_Remote> -D <DQProject>
 USAGE: $SCRIPT [-vVh]
@@ -39,31 +36,27 @@ from dq branch <DQBranch>
 Version: $VERSION
 EOF
 }
-
-getVersion() {
+getVersion() { #{{{2
 cat <<EOF
 $SCRIPT
 
 Version: $VERSION
 EOF
 }
-
-update_manifest() {
+update_manifest() { #{{{2
   sed -i \
     -e 's/^Created-By:.*/& - Omni Deployment Script/' \
     -e 's/^omnigen-release-number:.*/&.branch/' \
   META-INF/Manifest.mf
 }
-
-test_dq_branch() {
+test_dq_branch() { #{{{2
   git ls-remote -q --exit-code --heads "$GITRemote" "$DQBranch" >/dev/null || \
   (
     echo "DQ Branch \"$DQBranch\" does not exist!"
     exit 2;
   )
 }
-
-download_and_process() {
+download_and_process() { #{{{2
   test_dq_branch
   cd "$TEMPDIR"
   curl -sSk -o output_omni.html "${url}/generate?project_id=${ProjectID}"
@@ -83,23 +76,19 @@ download_and_process() {
   cp "$ZIP" ~/Downloads
   echo "Deployment_package $ZIP available at ~/Downloads"
 }
-
-is_git_dir() {
+is_git_dir() { #{{{2
   # is current directory a git working tree?
   git rev-parse --git-dir >/dev/null 2>&1
   return $?
 }
-
-determine_git_branch()
-{
+determine_git_branch() {  #{{{2
   # try to determine the current git branch
   # if it is not yet known
   if [[ -z "$DQBranch" && is_git_dir ]]; then
     DQBranch=$(git symbolic-ref --short HEAD)
   fi
 }
-
-debug_output() {
+debug_output() { #{{{2
 if [ "$VERBOSE" -eq 1 ]; then
 cat<<EOF
 $SCRIPT Parameters:
@@ -110,6 +99,7 @@ GITRemote:	$GITRemote
 GITProject:	$GITProject
 Deployment-URL:	$url
 RCFile:		$RCFILE
+ZIP:		$ZIP
 
 Enabling debug mode
 EOF
@@ -117,8 +107,7 @@ EOF
 exit 2;
 fi
 }
-
-source_ini_file() {
+source_ini_file() { #{{{2
   if [ -f "$RCFILE" ]; then 
     if [ "$VERBOSE" -gt 0 ]; then
       echo "sourcing ini file"
@@ -127,8 +116,7 @@ source_ini_file() {
   fi
 }
 
-
-# Main Script
+# Main Script #{{{1
 init_variables
 
 # Needs to be in Main!
@@ -159,9 +147,7 @@ if [ -z "$ProjectID" -o  -z "$DQBranch" -o -z "$GITRemote" -o -z "$GITProject" ]
     exit 1;
 fi
 
-
 exit 1
 download_and_process
-
 
 # vim: set et tw=80 sw=0 sts=-1 ts=2 fo+=r :
