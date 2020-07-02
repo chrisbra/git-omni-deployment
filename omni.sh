@@ -3,7 +3,7 @@
 set -eu
 trap cleanup EXIT
 init_variables() { #{{{2
-VERSION=0.3
+VERSION=0.4
 url=https://localhost:9502
 VERBOSE=0
 SCRIPT=${0##*\/}
@@ -16,16 +16,17 @@ cleanup() { #{{{2
 display_help() { #{{{2
 cat <<EOF
 USAGE: $SCRIPT -P <ProjectID> -B <DQBranch> -U <URL> -G <Git_Remote> -D <DQProject>
-USAGE: $SCRIPT [-vVh]
+USAGE: $SCRIPT [-v<nr>Vh?]
 
 Download the deployment bundle for Omni
 <ProjectID> and update with the dq components
 from dq branch <DQBranch>
 
     [default parameter]:
-    -v - verbose output
-    -V - return version
-    -h - this help page
+    -v<nr>	- verbose output (<nr> is verbose level, higher the more verbose)
+    -V		- return version
+    -h		- this help page
+    -?		- this help page
 
     Uses <Git_Remote> for accessing the DQ remote.
     Uses <URL> for downloading (default: https://localhost:9502 if not given).
@@ -59,10 +60,10 @@ if [ "$VERBOSE" -gt 1 ]; then
 cat<<EOF
 RCFile:		$RCFILE
 ZIP:		$ZIP
-ZIPCMD: $zipcmd
+ZIPCMD:		$zipcmd
 curl:		$curl
 git:		$git
-unzip:	$unzip
+unzip:		$unzip
 
 Enabling debug mode
 EOF
@@ -73,7 +74,7 @@ update_manifest() { #{{{2
   echo_output "Updating Manifest"
   sed -i \
     -e 's/^Created-By:.*/& - Omni Deployment Script/' \
-    -e 's/^omnigen-release-number:.*/&.branch/' \
+    -e "s/^omnigen-release-number:.*/&.dqbranch-${DQBranch}/" \
   META-INF/Manifest.mf
 }
 test_dq_branch() { #{{{2
@@ -84,6 +85,7 @@ test_dq_branch() { #{{{2
 }
 download_and_process() { #{{{2
   local lurl="${url}/generate?project_id=${ProjectID}"
+  OPWD="$PWD"
   cd "$TEMPDIR"
 
   echo_output "Calling Deployment-API: $lurl"
@@ -95,10 +97,11 @@ download_and_process() { #{{{2
   echo_output "Downloading Deployment Zip $lurl"
   ZIPFILE="${ZIPR##*/}.zip"
   curl -sSk -o "$ZIPFILE" "$lurl"
-  cp "$ZIPFILE" ~/Downloads/${ZIPFILE%%.zip}_backup.zip
+  # Enable to be able to compare the original and new zip files
+  # cp "$ZIPFILE" $OPWD/${ZIPFILE%%.zip}_backup.zip
   unzip -q "$ZIPFILE"
   rm -f "$ZIPFILE"
-  
+
   update_manifest
 
   echo_output "Cloning DQS Repository $GITRemote"
@@ -112,8 +115,11 @@ download_and_process() { #{{{2
   zip_contents "$ZIPFILE" META-INF/ server/
 
   echo_output "Copying resulting Deployment package"
-  cp "$ZIPFILE" ~/Downloads
-  echo "Deployment_package $ZIPFILE available at ~/Downloads"
+# Enable to be able to compare original and new version
+# cp "$ZIPFILE" ~/Downloads
+  cp "$ZIPFILE" "$OPWD"
+
+  echo "Deployment_package $ZIPFILE available at $OPWD"
 }
 zip_contents() { #{{{2
   ZIPFILE=$1
@@ -173,7 +179,7 @@ init_variables
 
 # Needs to be in Main!
 # Process commandline parameters
-while getopts "v:VhU:P:B:G:D:" ARGS
+while getopts "?v:VhU:P:B:G:D:" ARGS
     do
         case ${ARGS} in
         U) url=${OPTARG} ;;
@@ -193,7 +199,6 @@ shift `expr ${OPTIND} - 1`
 check_requirements
 source_ini_file
 determine_current_git_branch
-
 debug_output
 
 if [ -z "$ProjectID" -o  -z "$DQBranch" -o -z "$GITRemote" -o -z "$GITProject" ]; then
