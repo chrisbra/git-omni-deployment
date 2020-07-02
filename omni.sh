@@ -65,6 +65,7 @@ curl:		$curl
 git:		$git
 unzip:		$unzip
 PWD:		$PWD
+TEMPDIR:	$TEMPDIR
 
 Enabling debug mode
 EOF
