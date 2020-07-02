@@ -64,6 +64,7 @@ ZIPCMD:		$zipcmd
 curl:		$curl
 git:		$git
 unzip:		$unzip
+PWD:		$PWD
 
 Enabling debug mode
 EOF
@@ -147,11 +148,11 @@ determine_current_git_branch() {  #{{{2
   fi
 }
 source_ini_file() { #{{{2
-  if [ -f "$RCFILE" ]; then
+  if [ -f "${PWD}/${RCFILE}" ]; then
     if [ "$VERBOSE" -gt 0 ]; then
       echo "sourcing ini file"
     fi
-    . "$RCFILE"
+    . "${PWD}/${RCFILE}"
   fi
 }
 errorExit(){ #{{{2
