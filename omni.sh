@@ -203,7 +203,10 @@ source_ini_file
 determine_current_git_branch
 debug_output
 
-if [ -z "$ProjectID" -o  -z "$DQBranch" -o -z "$GITRemote" -o -z "$GITProject" ]; then
+if [ "X" == "${ProjectID:-X}" -o \
+  "X" == "${DQBranch:-X}" -o \
+  "X" == "${GITRemote:-X}" -o \
+  "X" == "${GITProject:-X}" ]; then
   echo "Missing Parameters!"
   display_help;
   exit 1;
