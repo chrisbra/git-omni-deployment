@@ -107,20 +107,24 @@ download_and_process() { #{{{2
 
   update_manifest
 
-  if [ "$GITRemote"  == "${GITOrigin:-X}" -a "X" != "${GITDIR:-X}" ]; then
-    echo_output "Creating DQS Archive from $GITRemote and $DQBranch"
-    git --git-dir="$GITDIR" archive --format=zip -o dq_archive.zip "${DQBranch}^{tree}" "Plans/${GITProject}"
-  else
-    echo_output "Cloning DQS Repository $GITRemote"
-    git clone --quiet --bare "${GITRemote}"  dqs
-    # DQProject=$(git --git-dir=dqs ls-tree  -r dev:Plans/ -d  --name-only  |head -1)
-    echo_output "Creating DQS Archive from $GITRemote and $DQBranch"
-    git --git-dir=dqs archive --format=zip -o dq_archive.zip "${DQBranch}^{tree}" "Plans/${GITProject}"
+  if [ "DQBranch" != "master" ]; then
+    echo_output "Modifying Deployment package with DQ content from $DQBranch"
+    if [ "$GITRemote"  == "${GITOrigin:-X}" -a "X" != "${GITDIR:-X}" ]; then
+      echo_output "Creating DQS Archive from $GITRemote and $DQBranch"
+      git --git-dir="$GITDIR" archive --format=zip -o dq_archive.zip "${DQBranch}^{tree}" "Plans/${GITProject}"
+    else
+      echo_output "Cloning DQS Repository $GITRemote"
+      git clone --quiet --bare "${GITRemote}"  dqs
+      # DQProject=$(git --git-dir=dqs ls-tree  -r dev:Plans/ -d  --name-only  |head -1)
+      echo_output "Creating DQS Archive from $GITRemote and $DQBranch"
+      git --git-dir=dqs archive --format=zip -o dq_archive.zip "${DQBranch}^{tree}" "Plans/${GITProject}"
+    fi
+
+    echo_output "Updating Deployment Zipfile"
+    unzip -q dq_archive.zip
+    cp -r "Plans/${GITProject}"/* server/mastering/
   fi
 
-  echo_output "Updating Deployment Zipfile"
-  unzip -q dq_archive.zip
-  cp -r "Plans/${GITProject}"/* server/mastering/
   zip_contents "$ZIPFILE" META-INF/ server/
 
   echo_output "Copying resulting Deployment package"
@@ -225,11 +229,6 @@ if [ "X" == "${ProjectID:-X}" -o \
 fi
 
 test_dq_branch
-if [ "$DQBranch" = "master" ]; then
-  echo "DQ Branch is master, nothing to do."
-  exit 0;
-fi
-
 download_and_process
 
 # vim: set et tw=80 sw=0 sts=-1 ts=2 fo+=r :
