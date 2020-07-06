@@ -3,16 +3,18 @@
 set -euo pipefail
 trap cleanup EXIT ERR
 init_variables() { #{{{2
-VERSION=0.4
-url=https://localhost:9502
-EMF_API_URL=http://localhost:9516/com.iwaysoftware.omni.designer.repositoryservice/
-VERBOSE=0
-SCRIPT=${0##*\/}
-RCFILE=omni_deployment.ini
-CURL_PARAM="-Ssk"
-TEMPDIR=$(mktemp -d -t omni.XXXXXX)
-ProjectBundle=n
-AUTH=$(printf "super:super"|base64)
+  # Variables here are just the default/fallback.
+  # They should be set via the configuration file or via parameter to the script.
+  VERSION=0.5
+  url=https://localhost:9502
+  EMF_API_URL=http://localhost:9516/com.iwaysoftware.omni.designer.repositoryservice
+  VERBOSE=0
+  SCRIPT=${0##*\/}
+  RCFILE=omni_deployment.ini
+  CURL_PARAM="-Ssk"
+  TEMPDIR=$(mktemp -d -t omni.XXXXXX)
+  ProjectBundle=n
+  AUTH=$(printf "super:super"|base64)
 }
 cleanup() { #{{{2
   test -n "$TEMPDIR" && rm -rf "$TEMPDIR"
@@ -22,27 +24,33 @@ cat <<EOF
 USAGE: $SCRIPT -P <ProjectID> -B <DQBranch> -U <URL> -G <Git_Remote> -D <DQProject>
 USAGE: $SCRIPT [-v<nr>Vh?]
 
-Download the deployment bundle for Omni
-<ProjectID> and update with the dq components
-from dq branch <DQBranch>
+Create Project and Deployment-Bundle, downloads the deployment bundle for Omni
+<ProjectID> and update with the dq components from dq branch <DQBranch>
 
     [default parameter]:
     -p		- create Project Bundle as well
     -E		- Specify EMF Store API (should look like this:
     http://localhost:9516/com.iwaysoftware.omni.designer.repositoryservice/)
+    -U		- Specify URL for the Deployment Console
+    -P		- Specify ProjectID
+    -B		- Specify DQ Branch (git branch name)
+    -G		- Git Repository URL
+    -D		- Project Name in the Git repository
     -v<nr>	- verbose output (<nr> is verbose level, higher the more verbose)
     -V		- return version
     -h		- this help page
     -?		- this help page
 
-    Uses <Git_Remote> for accessing the DQ remote.
     Uses <URL> for downloading (default: https://localhost:9502 if not given).
     Uses <DQProject> for the DQ Project (usually shouldn't change).
+
+    The resulting deployment bundle will be stored in the current directory.
 
 Version: $VERSION
 EOF
 }
 getVersion() { #{{{2
+  # Output Script Version
 cat <<EOF
 $SCRIPT
 
@@ -66,6 +74,7 @@ fi
 
 if [ "$VERBOSE" -gt 1 ]; then
 cat<<EOF
+Enabling debug mode
 RCFile:		$RCFILE
 ZIP:		$ZIP
 ZIPCMD:		$zipcmd
@@ -75,8 +84,6 @@ git:		$git
 unzip:		$unzip
 PWD:		$PWD
 TEMPDIR:	$TEMPDIR
-
-Enabling debug mode
 EOF
 
 fi
@@ -144,6 +151,10 @@ download_and_process() { #{{{2
   echo "Deployment_package $ZIPFILE available at $OPWD"
 }
 zip_contents() { #{{{2
+  # $1: Archive Name
+  # following arguments the directories to process
+  #
+  # needs 7z or zip
   ZIPFILE=$1
   shift
   if [[ "$ZIP" == "7z" && -x "$zipcmd" ]]; then
@@ -174,7 +185,7 @@ determine_current_git_branch() {  #{{{2
 source_ini_file() { #{{{2
   if [ -f "${PWD}/${RCFILE}" ]; then
     if [ "$VERBOSE" -gt 0 ]; then
-      echo "sourcing ini file"
+      echo "sourcing ini file ${PWD}/${RCFILE}"
     fi
     . "${PWD}/${RCFILE}"
   fi
@@ -184,6 +195,7 @@ errorExit(){ #{{{2
   exit 3
 }
 check_requirements() { #{{{2
+  # Check that required Commands are available
   # Curl
   curl=$(which curl 2>/dev/null) || errorExit "Curl not found!" ;
   # Git
@@ -201,11 +213,17 @@ echo_output() { #{{{2
   fi
 }
 get_emf_version() { #{{{2
-  EMFBranch=$DQBranch
+  if [ -z "${EMFBranch:-}" ]; then
+    EMFBranch=$DQBranch
+  fi
   # if DQSBRanch is master, use trunk (which is the master trunk in EMF Store)
   if [ "${EMFBranch}" = 'master' ]; then
     EMFBranch='trunk'
   fi
+  # Replace '/' by '_'
+  EMFBranch=${EMFBranch//\//_}
+  echo_output "Calling API to determine EMF Version: \
+  ${EMF_API_URL}/emfstore/projects/${ProjectID}/${EMFBranch}/version"
   local RETURN_CODE=$(curl $CURL_PARAM -o /dev/null \
     -I -w "%{http_code}" \
     -X GET \
@@ -225,6 +243,8 @@ get_emf_version() { #{{{2
 }
 get_project_release_numbers() { #{{{2
 
+  echo_output "Calling API to determine Project Version numbers: \
+  ${EMF_API_URL}/projectbundle/releasebundle/${ProjectID}"
   local RETURN_CODE=$(curl $CURL_PARAM -o /dev/null \
     -I -w "%{http_code}" \
     -X GET \
@@ -247,7 +267,7 @@ get_project_release_numbers() { #{{{2
     -e 's/.*versionSecondNumber>\(.\+\)$/VersionSecondNumber="\1"/' \
     -e 's/.*versionThirdNumber>\(.\+\)$/VersionThirdNumber="\1"/' \
     -e '/^<.*/d')
-  if [ "$VERBOSE" -gt 1 ]; then
+  if [ "$VERBOSE" -gt 2 ]; then
     echo_output "Current Release Numbers:"
     echo_output "DevelopmentStage:	$DevelopmentStage"
     echo_output "DevelopmentStageNumber:	$DevelopmentStageNumber"
@@ -272,7 +292,7 @@ increment_release_numbers() { #{{{2
     VersionSecondNumber=0;
     VersionFirstNumber=$((${VersionFirstNumber} + 1))
   fi
-  if [ "$VERBOSE" -gt 1 ]; then
+  if [ "$VERBOSE" -gt 2 ]; then
     echo_output "New Release Numbers:"
     echo_output "DevelopmentStage:	$DevelopmentStage"
     echo_output "DevelopmentStageNumber:	$DevelopmentStageNumber"
@@ -282,13 +302,12 @@ increment_release_numbers() { #{{{2
   fi
 }
 create_project_bundle() { #{{{2
-  if [ "$ProjectBundle" = "n" ]; then
-    return;
-  fi
-  echo_output "Creating Project Bundle"
   get_emf_version
   get_project_release_numbers
   increment_release_numbers
+  # Create Input Document for the Project Creation
+  # contains all the required parameters to create the project bundle
+  # (mostly version numbers)
   XML=$(cat <<EOF
 <?xml version="1.0"?>
 <projectBundleRequestDTO>
@@ -301,28 +320,27 @@ create_project_bundle() { #{{{2
     <versionSecondNumber>${VersionSecondNumber}</versionSecondNumber>
     <versionThirdNumber>${VersionThirdNumber}</versionThirdNumber>
   </releaseNumber>
-  <source>${DQBranch}</source>
+  <source>${EMFBranch}</source>
   <user>API</user>
   <version>${EMFVERSION}</version>
 </projectBundleRequestDTO>
 EOF
 )
 
-#  local RETURN_CODE=$(curl $CURL_PARAM   \
-#    -w "%{http_code}" \
-#    -X POST \
-#    --header 'Accept: application/xml' \
-#    --header "Authorization: Basic $AUTH" \
-#    "${EMF_API_URL}/projectbundle/releasenumber/${ProjectID}")
-#  if [ "$RETURN_CODE" != "200" ]; then
-#    errorExit "Unable to generate new Project: Return code $RETURN_CODE"
-#  fi
-  curl $CURL_PARAM \
+  if [ "$VERBOSE" -gt 2 ]; then
+    echo_output "Input XML: $XML"
+  fi
+  echo_output "Calling API to create project bundle: \
+    ${EMF_API_URL}/projectbundle/generate"
+  Output=$(curl $CURL_PARAM \
     -X POST \
     --header 'Content-Type: application/xml' \
     --header 'Accept: application/xml' \
     --header "Authorization: Basic $AUTH" \
-    -d "$XML" "${EMF_API_URL}/projectbundle/generate"
+    -d "${XML}" "${EMF_API_URL}/projectbundle/generate" | sed -e 's/</\n</g')
+  if [ "$VERBOSE" -gt 2 ]; then
+    echo_output "Returned: $Output"
+  fi
 }
 # Main Script #{{{1
 init_variables
@@ -365,8 +383,9 @@ if [ -z  "${ProjectID:-}" -o \
 fi
 
 test_dq_branch
-
-create_project_bundle
-#download_and_process
+if [ "$ProjectBundle" = "y" ]; then
+  create_project_bundle
+fi
+download_and_process
 
 # vim: set et tw=80 sw=0 sts=-1 ts=2 fo+=r :
