@@ -1,29 +1,37 @@
 
 # The git-omni-deployment Repository [![Say Thanks!](https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg)](https://saythanks.io/to/cb%40256bit.org)
 
-This repository contains a tool to ease creating the deployment bundle for [Omni-Gen][1].
+This repository contains a tool to ease creating the project and deployment bundle for [Omni-Gen][1].
 
 ## Installation
 Simply clone this tool somewhere and put it into the path.
 
 ## Usage:
 
-		USAGE: omni.sh -P <ProjectID> -B <DQBranch> -U <URL> -G <Git_Remote> -D <DQProject>
-		USAGE: omni.sh [-v<nr>Vh?]
+		USAGE: $SCRIPT -p -P <ProjectID> -B <DQBranch> -U <URL> -G <Git_Remote> -D <DQProject>
+		USAGE: $SCRIPT [-v<nr>Vh?]
 
-		Download the deployment bundle for Omni using
-		<ProjectID> and update with the dq components
-		from dq branch <DQBranch>
+		Create Project and Deployment-Bundle, downloads the deployment bundle for Omni
+		<ProjectID> and update with the dq components from dq branch <DQBranch>
 
-		[default parameter]:
-		-v<nr>	- verbose output (<nr> is verbose level, higher the more verbose)
-		-V		- return version
-		-h		- this help page
-		-?		- this help page
+    [default parameter]:
+    -p		- create Project Bundle as well
+    -E		- Specify EMF Store API (should look like this:
+    http://localhost:9516/com.iwaysoftware.omni.designer.repositoryservice/)
+    -U		- Specify URL for the Deployment Console
+    -P		- Specify ProjectID
+    -B		- Specify DQ Branch (git branch name)
+    -G		- Git Repository URL
+    -D		- Project Name in the Git repository
+    -v<nr>	- verbose output (<nr> is verbose level, higher the more verbose)
+    -V		- return version
+    -h		- this help page
+    -?		- this help page
 
-		Uses <Git_Remote> for accessing the DQ remote.
-		Uses <URL> for downloading (default: https://localhost:9502 if not given).
-		Uses <DQProject> for the DQ Project (usually shouldn't change).
+    Uses <URL> for downloading (default: https://localhost:9502 if not given).
+    Uses <DQProject> for the DQ Project (usually shouldn't change).
+
+    The resulting deployment bundle will be stored in the current directory.
 
 		Version: 0.4
 

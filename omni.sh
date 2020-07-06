@@ -21,7 +21,7 @@ cleanup() { #{{{2
 }
 display_help() { #{{{2
 cat <<EOF
-USAGE: $SCRIPT -P <ProjectID> -B <DQBranch> -U <URL> -G <Git_Remote> -D <DQProject>
+USAGE: $SCRIPT -p -P <ProjectID> -B <DQBranch> -U <URL> -G <Git_Remote> -D <DQProject>
 USAGE: $SCRIPT [-v<nr>Vh?]
 
 Create Project and Deployment-Bundle, downloads the deployment bundle for Omni
@@ -206,6 +206,8 @@ check_requirements() { #{{{2
   ZIP=${zipcmd##*/}
   # unzip
   unzip=$(which unzip 2>/dev/null) || errorExit "unzip not found!" ;
+  # sed
+  sed=$(which sed >/dev/null) || errorExit "sed not found!" ;
 }
 echo_output() { #{{{2
   if [ "$VERBOSE" -gt 0 ]; then
