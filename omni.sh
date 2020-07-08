@@ -89,14 +89,14 @@ EOF
 fi
 }
 update_manifest() { #{{{2
-  echo_output "Updating Manifest"
+  echo_output 1 "Updating Manifest"
   sed -i \
     -e 's/^Created-By:.*/& - Omni Deployment Script/' \
     -e "s/^omnigen-release-number:.*/&.dqbranch-${DQBranch##*/}/" \
   META-INF/Manifest.mf
 }
 test_dq_branch() { #{{{2
-  echo_output "Checking remote branch $DQBranch for $GITRemote"
+  echo_output 1 "Checking remote branch $DQBranch for $GITRemote"
   git ls-remote -q --exit-code --heads "$GITRemote" "$DQBranch" >/dev/null || \
   (
     errorExit "DQ Branch \"$DQBranch\" does not exist!"
@@ -107,13 +107,13 @@ download_and_process() { #{{{2
   OPWD="$PWD"
   cd "$TEMPDIR"
 
-  echo_output "Calling Deployment-API: $lurl"
+  echo_output 1 "Calling Deployment-API: $lurl"
 
   curl $CURL_PARAM -o output_omni.html "$lurl"
   ZIPR=$(sed -ne 's#.*<a href="\(.*\)">Download.*</a></div>$#\1#p' output_omni.html)
 
   lurl="${url}/${ZIPR}"
-  echo_output "Downloading Deployment Zip $lurl"
+  echo_output 1 "Downloading Deployment Zip $lurl"
   ZIPFILE="${ZIPR##*/}.zip"
   curl $CURL_PARAM -o "$ZIPFILE" "$lurl"
   # Enable to be able to compare the original and new zip files
@@ -124,26 +124,26 @@ download_and_process() { #{{{2
   update_manifest
 
   if [ "DQBranch" != "master" ]; then
-    echo_output "Modifying Deployment package with DQ content from $DQBranch"
+    echo_output 1 "Modifying Deployment package with DQ content from $DQBranch"
     if [ "$GITRemote" = "${GITOrigin:-}" -a -n "${GITDIR:-}" ]; then
-      echo_output "Creating DQS Archive from $GITRemote and $DQBranch"
+      echo_output 1 "Creating DQS Archive from $GITRemote and $DQBranch"
       git --git-dir="$GITDIR" archive --format=zip -o dq_archive.zip "${DQBranch}^{tree}" "Plans/${GITProject}"
     else
-      echo_output "Cloning DQS Repository $GITRemote"
+      echo_output 1 "Cloning DQS Repository $GITRemote"
       git clone --quiet --bare "${GITRemote}"  dqs
       # DQProject=$(git --git-dir=dqs ls-tree  -r dev:Plans/ -d  --name-only  |head -1)
-      echo_output "Creating DQS Archive from $GITRemote and $DQBranch"
+      echo_output 1 "Creating DQS Archive from $GITRemote and $DQBranch"
       git --git-dir=dqs archive --format=zip -o dq_archive.zip "${DQBranch}^{tree}" "Plans/${GITProject}"
     fi
 
-    echo_output "Updating Deployment Zipfile"
+    echo_output 1 "Updating Deployment Zipfile"
     unzip -q dq_archive.zip
     cp -r "Plans/${GITProject}"/* server/mastering/
   fi
 
   zip_contents "$ZIPFILE" META-INF/ server/
 
-  echo_output "Copying resulting Deployment package"
+  echo_output 1 "Copying resulting Deployment package"
 # Enable to be able to compare original and new version
 # cp "$ZIPFILE" ~/Downloads
   cp "$ZIPFILE" "$OPWD"
@@ -178,7 +178,7 @@ determine_current_git_branch() {  #{{{2
   # try to determine the current git branch
   # if it is not yet known
   if [[ -z "${DQBranch:-}" && -n "${GITDIR:-}" ]]; then
-    echo_output "Determining git branch from current working directory $PWD"
+    echo_output 1 "Determining git branch from current working directory $PWD"
     DQBranch=$(git symbolic-ref --short HEAD 2>/dev/null) || true
   fi
 }
@@ -210,7 +210,9 @@ check_requirements() { #{{{2
   sed=$(which sed >/dev/null) || errorExit "sed not found!" ;
 }
 echo_output() { #{{{2
-  if [ "$VERBOSE" -gt 0 ]; then
+  local level=$1
+  shift
+  if [ "$VERBOSE" -ge "$level" ]; then
     echo "$*"
   fi
 }
@@ -224,7 +226,7 @@ get_emf_version() { #{{{2
   fi
   # Replace '/' by '_'
   EMFBranch=${EMFBranch//\//_}
-  echo_output "Calling API to determine EMF Version: \
+  echo_output 1 "Calling API to determine EMF Version: \
   ${EMF_API_URL}/emfstore/projects/${ProjectID}/${EMFBranch}/version"
   local RETURN_CODE=$(curl $CURL_PARAM -o /dev/null \
     -I -w "%{http_code}" \
@@ -241,11 +243,11 @@ get_emf_version() { #{{{2
     --header "Authorization: Basic $AUTH" \
       "${EMF_API_URL}/emfstore/projects/${ProjectID}/${EMFBranch}/version" | \
       sed -ne 's/^{"result":\([0-9]\+\)}/\1/p')
-  echo_output "EMF Version: $EMFVERSION"
+  echo_output 1 "EMF Version: $EMFVERSION"
 }
 get_project_release_numbers() { #{{{2
 
-  echo_output "Calling API to determine Project Version numbers: \
+  echo_output 1 "Calling API to determine Project Version numbers: \
   ${EMF_API_URL}/projectbundle/releasebundle/${ProjectID}"
   local RETURN_CODE=$(curl $CURL_PARAM -o /dev/null \
     -I -w "%{http_code}" \
@@ -269,17 +271,15 @@ get_project_release_numbers() { #{{{2
     -e 's/.*versionSecondNumber>\(.\+\)$/VersionSecondNumber="\1"/' \
     -e 's/.*versionThirdNumber>\(.\+\)$/VersionThirdNumber="\1"/' \
     -e '/^<.*/d')
-  if [ "$VERBOSE" -gt 2 ]; then
-    echo_output "Current Release Numbers:"
-    echo_output "DevelopmentStage:	$DevelopmentStage"
-    echo_output "DevelopmentStageNumber:	$DevelopmentStageNumber"
-    echo_output "VersionFirstNumber:	$VersionFirstNumber"
-    echo_output "VersionSecondNumber:	$VersionSecondNumber"
-    echo_output "VersionThirdNumber:	$VersionThirdNumber"
-  fi
+    echo_output 2 "Current Release Numbers:"
+    echo_output 2 "DevelopmentStage:	$DevelopmentStage"
+    echo_output 2 "DevelopmentStageNumber:	$DevelopmentStageNumber"
+    echo_output 2 "VersionFirstNumber:	$VersionFirstNumber"
+    echo_output 2 "VersionSecondNumber:	$VersionSecondNumber"
+    echo_output 2 "VersionThirdNumber:	$VersionThirdNumber"
 }
 increment_release_numbers() { #{{{2
-  echo_output "Increment Release Numbers"
+  echo_output 1 "Increment Release Numbers"
   if [ "$DevelopmentStageNumber" -ge 99 ]; then
     DevelopmentStageNumber=0
     VersionThirdNumber=$((${VersionThirdNumber} + 1))
@@ -294,14 +294,12 @@ increment_release_numbers() { #{{{2
     VersionSecondNumber=0;
     VersionFirstNumber=$((${VersionFirstNumber} + 1))
   fi
-  if [ "$VERBOSE" -gt 2 ]; then
-    echo_output "New Release Numbers:"
-    echo_output "DevelopmentStage:	$DevelopmentStage"
-    echo_output "DevelopmentStageNumber:	$DevelopmentStageNumber"
-    echo_output "VersionFirstNumber:	$VersionFirstNumber"
-    echo_output "VersionSecondNumber:	$VersionSecondNumber"
-    echo_output "VersionThirdNumber:	$VersionThirdNumber"
-  fi
+    echo_output 2 "New Release Numbers:"
+    echo_output 2 "DevelopmentStage:	$DevelopmentStage"
+    echo_output 2 "DevelopmentStageNumber:	$DevelopmentStageNumber"
+    echo_output 2 "VersionFirstNumber:	$VersionFirstNumber"
+    echo_output 2 "VersionSecondNumber:	$VersionSecondNumber"
+    echo_output 2 "VersionThirdNumber:	$VersionThirdNumber"
 }
 create_project_bundle() { #{{{2
   get_emf_version
@@ -329,10 +327,8 @@ create_project_bundle() { #{{{2
 EOF
 )
 
-  if [ "$VERBOSE" -gt 2 ]; then
-    echo_output "Input XML: $XML"
-  fi
-  echo_output "Calling API to create project bundle: \
+  echo_output 2 "Input XML: $XML"
+  echo_output 1 "Calling API to create project bundle: \
     ${EMF_API_URL}/projectbundle/generate"
   Output=$(curl $CURL_PARAM \
     -X POST \
@@ -340,9 +336,7 @@ EOF
     --header 'Accept: application/xml' \
     --header "Authorization: Basic $AUTH" \
     -d "${XML}" "${EMF_API_URL}/projectbundle/generate" | sed -e 's/</\n</g')
-  if [ "$VERBOSE" -gt 2 ]; then
-    echo_output "Returned: $Output"
-  fi
+  echo_output 2 "Returned: $Output"
 }
 # Main Script #{{{1
 init_variables
