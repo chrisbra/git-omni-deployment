@@ -101,7 +101,7 @@ test_dq_branch() { #{{{2
     return
   fi
   echo_output 1 "Checking remote branch $DQBranch for $GITRemote"
-  git ls-remote -q --exit-code --heads "$GITRemote" "$DQBranch" >/dev/null || \
+  git -c credential.helper=manager ls-remote -q --exit-code --heads "$GITRemote" "$DQBranch" >/dev/null || \
   (
     errorExit "DQ Branch \"$DQBranch\" does not exist!"
   )
