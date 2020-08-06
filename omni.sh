@@ -96,6 +96,10 @@ update_manifest() { #{{{2
   META-INF/Manifest.mf
 }
 test_dq_branch() { #{{{2
+  # assume master branch always exists
+  if [ "$DQBranch" = "master" ]; then
+    return
+  fi
   echo_output 1 "Checking remote branch $DQBranch for $GITRemote"
   git ls-remote -q --exit-code --heads "$GITRemote" "$DQBranch" >/dev/null || \
   (
