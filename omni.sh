@@ -5,7 +5,7 @@ trap cleanup EXIT ERR
 init_variables() { #{{{2
   # Variables here are just the default/fallback.
   # They should be set via the configuration file or via parameter to the script.
-  VERSION=0.5
+  VERSION=0.6
   url=https://localhost:9502
   EMF_API_URL=http://localhost:9516/com.iwaysoftware.omni.designer.repositoryservice
   VERBOSE=0
