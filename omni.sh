@@ -36,6 +36,7 @@ Create Project and Deployment-Bundle, downloads the deployment bundle for Omni
     -B		- Specify DQ Branch (git branch name)
     -G		- Git Repository URL
     -D		- Project Name in the Git repository
+    -d		- Skip verification of git DQ branch
     -v<nr>	- verbose output (<nr> is verbose level, higher the more verbose)
     -V		- return version
     -h		- this help page
@@ -84,6 +85,7 @@ git:		$git
 unzip:		$unzip
 PWD:		$PWD
 TEMPDIR:	$TEMPDIR
+VERIFY_DQ_BRANCH: ${VERIFY_DQ_BRANCH:-y}
 EOF
 
 fi
@@ -96,6 +98,11 @@ update_manifest() { #{{{2
   META-INF/Manifest.mf
 }
 test_dq_branch() { #{{{2
+  if [ "${VERIFY_DQ_BRANCH:-}" = "n" ]; then
+    echo_output 1 "Skipping verfication of DQ Branch in remote repository"
+    return
+  fi
+
   # assume master branch always exists
   if [ "$DQBranch" = "master" ]; then
     return
@@ -348,7 +355,7 @@ source_ini_file
 
 # Needs to be in Main!
 # Process commandline parameters
-while getopts "p?v:VhU:P:B:G:D:E:" ARGS
+while getopts "dp?v:VhU:P:B:G:D:E:" ARGS
     do
         case ${ARGS} in
         U) url=${OPTARG} ;;
@@ -358,6 +365,7 @@ while getopts "p?v:VhU:P:B:G:D:E:" ARGS
         D) GITProject=${OPTARG} ;;
         E) EMF_API_URL=${OPTARG} ;;
         v) VERBOSE=${OPTARG:-1};;
+        d) VERIFY_DQ_BRANCH=n;;
         p) ProjectBundle=y;;
         V) getVersion; exit 0 ;;
         h) display_help; exit 0 ;;
