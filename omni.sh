@@ -195,9 +195,7 @@ determine_current_git_branch() {  #{{{2
 }
 source_ini_file() { #{{{2
   if [ -f "${PWD}/${RCFILE}" ]; then
-    if [ "$VERBOSE" -gt 0 ]; then
-      echo "sourcing ini file ${PWD}/${RCFILE}"
-    fi
+    echo_output 0 "sourcing ini file ${PWD}/${RCFILE}"
     . "${PWD}/${RCFILE}"
   fi
 }
