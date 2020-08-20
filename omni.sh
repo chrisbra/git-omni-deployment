@@ -388,10 +388,24 @@ if [ -z  "${ProjectID:-}" -o \
   exit 1;
 fi
 
+# verify dq branch in remote repository
 test_dq_branch
 if [ "$ProjectBundle" = "y" ]; then
+  # This creates a new Project bundle.
+  # It does the following:
+  # 1) get the EMF Version number for the current $EMFBranch
+  # 2) Get the current release numbers for the ProjectID and increment the minor version
+  # 3) Create a new Project bundle for EMF Version with the incremented release numbers
   create_project_bundle
 fi
+
+# Generated the Deployment bundle from the last Project bundle
+# (possibly created in the previous step)
+# 1) unzip it
+# 2) update metadata in Manifest
+# 3) clone DQ Branch if $CWD is not already the DQ git workdir
+# 4) update the content from the deployment bundle with content from 3
+# 5) re-zip it as deployment bundle again
 download_and_process
 
 # vim: set et tw=80 sw=0 sts=-1 ts=2 fo+=r :
