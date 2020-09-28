@@ -21,11 +21,13 @@ cleanup() { #{{{2
 }
 display_help() { #{{{2
 cat <<EOF
-USAGE: $SCRIPT -p -P <ProjectID> -B <DQBranch> -U <URL> -G <Git_Remote> -D <DQProject>
+USAGE: $SCRIPT -p -P <ProjectID> -B <DQBranch> -U <URL> -G <Git_Remote> -D <DQProject> -f <ConfigFile>
 USAGE: $SCRIPT [-v<nr>Vh?]
 
 Create Project and Deployment-Bundle, downloads the deployment bundle for Omni
 <ProjectID> and update with the dq components from dq branch <DQBranch>
+<ConfigFile> by default is omni_deployment.ini in the same directory as this
+script.
 
     [default parameter]:
     -p		- create Project Bundle as well
@@ -37,6 +39,7 @@ Create Project and Deployment-Bundle, downloads the deployment bundle for Omni
     -G		- Git Repository URL
     -D		- Project Name in the Git repository
     -d		- Skip verification of git DQ branch
+    -f		- Source config file (default: omni_deployment.ini)
     -v<nr>	- verbose output (<nr> is verbose level, higher the more verbose)
     -V		- return version
     -h		- this help page
@@ -200,9 +203,12 @@ determine_current_git_branch() {  #{{{2
   fi
 }
 source_ini_file() { #{{{2
-  if [ -f "${PWD}/${RCFILE}" ]; then
-    echo_output 0 "sourcing ini file ${PWD}/${RCFILE}"
-    . "${PWD}/${RCFILE}"
+  if [[ "${RCFILE:0:1}" != '/' ]];  then
+    RCFILE="${PWD}/${RCFILE}"
+  fi
+  if [ -f "${RCFILE}" ]; then
+    echo_output 0 "sourcing ini file ${RCFILE}"
+    . "${RCFILE}"
   fi
 }
 errorExit(){ #{{{2
@@ -355,6 +361,11 @@ EOF
 }
 # Main Script #{{{1
 init_variables
+# check for file to source. Can't be in main getopts call further down.
+if [ "$1" == '-f' ]; then
+  RCFILE="$2"
+  shift 2
+fi
 source_ini_file
 
 # Needs to be in Main!
@@ -371,6 +382,7 @@ while getopts "dp?v:VhU:P:B:G:D:E:" ARGS
         v) VERBOSE=${OPTARG:-1};;
         d) VERIFY_DQ_BRANCH=n;;
         p) ProjectBundle=y;;
+        f) RCFILE=${OPTARG} ;; # not used
         V) getVersion; exit 0 ;;
         h) display_help; exit 0 ;;
         ?) display_help; exit 0 ;;
