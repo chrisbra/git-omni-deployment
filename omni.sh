@@ -66,6 +66,8 @@ $SCRIPT Parameters:
 ProjectID:	$ProjectID
 DQBranch:	$DQBranch
 GITRemote:	$GITRemote
+GITOrigin:	$GITOrigin
+GITDIR:		${GITDIR:-}
 DQProject:	$GITProject
 Deployment-URL:	$url
 EMF_API_URL:	$EMF_API_URL
@@ -180,6 +182,10 @@ is_git_dir() { #{{{2
   # is current directory a git working tree?
   GITDIR=$(git rev-parse --git-dir 2>&1) &&
   GITOrigin=$(git config remote.origin.url)
+
+  # case for the path matters, but shouldn't for the hostname
+  # to ignore case:
+  #GITOrigin=$(git config remote.origin.url | tr '[:upper:]' '[:lower:]')
 
   if [ "$GITDIR" == '.git' ]; then
     GITDIR="${PWD}/${GITDIR}"
